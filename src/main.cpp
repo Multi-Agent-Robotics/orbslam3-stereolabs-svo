@@ -2,6 +2,7 @@
 #include <fstream>
 #include <iostream>
 #include <string>
+#include <optional>
 
 #include <sys/ioctl.h>
 #include <unistd.h>
@@ -31,7 +32,6 @@ auto get_terminal_dimensions() -> TerminalDimensions {
     };
 }
 
-
 auto progressbar(double ratio, unsigned int width) -> void {
     unsigned int c = ratio * width;
     for (unsigned int x = 0; x < c; x++) std::cout << "=";
@@ -39,6 +39,42 @@ auto progressbar(double ratio, unsigned int width) -> void {
     std::cout << (unsigned int) (ratio * 100) << "% ";
     std::cout << "\r" << std::flush;
 }
+
+// struct ImuInformation {
+//     sl::Timestamp timestamp;
+//     sl::Transform pose; // IMU 6-DoF pose
+//     sl::float3 linear_acceleration;
+//     // sl::float3 angular_velocity; // \note Not available in SVO or Stream mode. (see /usr/local/zed/include/sl/Camera.hpp)
+// };
+
+auto retrive_imu_data(sl::Camera& camera) -> std::optional<sl::SensorsData::IMUData> {
+    sl::SensorsData sensors_data;
+    // TIME_REFERENCE::IMAGE is used to retrieve only frame synchronized data
+    if (camera.getSensorsData(sensors_data, sl::TIME_REFERENCE::IMAGE) != sl::ERROR_CODE::SUCCESS) {
+        return std::nullopt;
+    }
+    return sensors_data.imu;
+    // const auto imu_data = sensors_data.imu;
+
+    // return imu_data;
+
+    // return ImuInformation{
+    //     .timestamp = imu_data.timestamp,
+    //     .pose = imu_data.pose,
+    //     .timestamp = imu_data.timestamp.getNanoseconds(),
+    //     .linear_acceleration = imu_data.linear_acceleration,
+    //     .angular_velocity = imu_data.angular_velocity,
+    // };
+}
+
+auto pretty_print_imu_data(const sl::SensorsData::IMUData& imu_data) -> void {
+    std::cout << "IMU Data:" << std::endl;
+    // std::cout << "  Timestamp: " << imu_data.timestamp.getNanoseconds() << std::endl;
+    // std::cout << "  Pose: " << imu_data.pose << std::endl;
+    // std::cout << "  Linear Acceleration: " << imu_data.linear_acceleration << std::endl;
+    // std::cout << "  Angular Velocity: " << imu_data.angular_velocity << std::endl;
+}
+
 
 
 auto verify_filepath_argument(const std::string &filepath,
@@ -216,7 +252,13 @@ auto main(int argc, char const *argv[]) -> int {
             // const sl::VIEW svo_view_mode = sl::VIEW::SIDE_BY_SIDE; // or UNRECTIFIED | GREYSCALE 
             const sl::VIEW svo_view_mode = sl::VIEW::SIDE_BY_SIDE; // or UNRECTIFIED | GREYSCALE 
             zed_camera.retrieveImage(svo_image, svo_view_mode, sl::MEM::CPU, low_resolution);
+                    // Get frame count      
             int svo_position = zed_camera.getSVOPosition();
+
+            if (const auto opt = retrive_imu_data(zed_camera)) {
+                const auto imu_data = opt.value();
+                pretty_print_imu_data(imu_data);
+            }
 
             // Display the frame
             cv::imshow("View", svo_image_ocv);
