@@ -9,7 +9,7 @@ include (cmake/ccache.cmake)
 # targets
 add_executable (orbslam3-stereolabs-svo "")
 
-set (CMAKE_CXX_STANDARD 17)
+set (CMAKE_CXX_STANDARD 20)
 set (CMAKE_CXX_STANDARD_REQUIRED ON)
 set (CMAKE_CXX_EXTENSIONS OFF)
 
@@ -28,6 +28,15 @@ find_package (ZED 3 REQUIRED)
 find_package (CUDA ${ZED_CUDA_VERSION} EXACT REQUIRED)
 find_package (OpenCV REQUIRED)
 
+# option (FORCE_COLORED_OUTPUT "Always produce ANSI-colored output (GNU/Clang only)." TRUE)
+
+# if (${FORCE_COLORED_OUTPUT})
+# if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+# add_compile_options (-fdiagnostics-color=always)
+# elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+# add_compile_options (-fcolor-diagnostics)
+# endif ()
+# endif ()
 target_sources (orbslam3-stereolabs-svo
     PRIVATE
         src/main.cpp
@@ -49,15 +58,22 @@ target_include_directories (orbslam3-stereolabs-svo
         ${OpenCV_INCLUDE_DIRS}
 )
 
+message (STATUS "CMAKE_CXX_COMPILER_ID: ${CMAKE_CXX_COMPILER_ID}")
+
 target_compile_options (orbslam3-stereolabs-svo PRIVATE
     -Wall
     -Wextra
-    -Wpedantic
+
+    # if the compiler is clang
+    $<$<STREQUAL:${CMAKE_CXX_COMPILER_ID},Clang>:-fcolor-diagnostics>
+
+    # if the compiler is gcc
+    $<$<STREQUAL:${CMAKE_CXX_COMPILER_ID},GNU>:-fdiagnostics-color=always>
 )
 
 target_compile_features (orbslam3-stereolabs-svo
     PRIVATE
-        cxx_std_17
+        cxx_std_20
 )
 
 export (TARGETS orbslam3-stereolabs-svo
