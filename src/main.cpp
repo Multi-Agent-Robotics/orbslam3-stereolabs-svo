@@ -4,6 +4,7 @@
 #include <string>
 #include <optional>
 
+// Needed for terminal dimensions
 #include <sys/ioctl.h>
 #include <unistd.h>
 
@@ -31,6 +32,11 @@ auto get_terminal_dimensions() -> TerminalDimensions {
         .height = w.ws_row,
     };
 }
+
+// check if stdout is a terminal...
+// bool isatty() {
+//     return ::isatty(fileno(stdout));
+// }
 
 auto progressbar(double ratio, unsigned int width) -> void {
     unsigned int c = ratio * width;
@@ -111,7 +117,11 @@ auto main(int argc, char const *argv[]) -> int {
   const std::string program_name = argv[0];
   const std::string program_description =
       "Feed a recorded *.svo file to ORB-SLAM3.";
+
+    //   struct Settings {
+        
   bool use_viewer = true;
+  bool loop_recording = false;
 
     const std::string default_path_to_vocabulary =
       "/home/orin/multi-agent-robotics/ORB-SLAM3-STEREO-FIXED/vocabulary/"
@@ -126,6 +136,7 @@ auto main(int argc, char const *argv[]) -> int {
       "settings", "Path to ORB-SLAM3 settings", cxxopts::value<std::string>()->default_value(default_path_to_settings))(
       "use_viewer", "Use viewer, default true.",
       cxxopts::value(use_viewer))
+      ("loop", "Loop around and replay the recording when it finishes", cxxopts::value(loop_recording))
     //   ("view", "The sl::VIEW to use for the .svo file", cxxopts::value<std::string>()->default_value("SIDE_BY_SIDE"))
       ("h,help", "Print usage information");
 
@@ -224,8 +235,9 @@ auto main(int argc, char const *argv[]) -> int {
         return EXIT_FAILURE;
     }
 
-        auto resolution = zed_camera.getCameraInformation().camera_configuration.resolution;
-
+    const sl::CameraInformation camera_information = zed_camera.getCameraInformation();
+    const sl::Resolution resolution = camera_information.camera_configuration.resolution;
+    const float fps = camera_information.camera_configuration.fps;
 // Define OpenCV window size (resize to max 720/404)
     sl::Resolution low_resolution(std::min(720, (int)resolution.width) * 2, std::min(404, (int)resolution.height));
     sl::Mat svo_image(low_resolution, sl::MAT_TYPE::U8_C4, sl::MEM::CPU);
@@ -242,7 +254,16 @@ auto main(int argc, char const *argv[]) -> int {
     int nb_frames = zed_camera.getSVONumberOfFrames();
     std::fprintf(stdout, "[Info] SVO file is %d frames\n", nb_frames);
 
+
+
+  // Create a orbslam3 system object
+
+//   orbslam3::System orbslam3_system(vocabulary_filepath, settings_filepath,
+                                //    orbslam3::System::IMU_STEREO, use_viewer);
+
     // Start SVO playback
+
+
 
      while (key != 'q') {
         returned_state = zed_camera.grab();
@@ -277,12 +298,19 @@ auto main(int argc, char const *argv[]) -> int {
             }
 
             // progressbar(static_cast<double>(svo_position) / static_cast<double>(nb_frames), get_terminal_dimensions().width - 10);
-            progressbar(static_cast<double>(svo_position) / static_cast<double>(nb_frames), 80);
+            if (std::isaatty(fileno(stdout)) {
+                progressbar(static_cast<double>(svo_position) / static_cast<double>(nb_frames), 80);
+            }
         }
         else if (returned_state == sl::ERROR_CODE::END_OF_SVOFILE_REACHED)
         {
             std::fprintf(stderr, "[Info] SVO end has been reached. Looping back to 0\n");
+            if(loop_recording) {
             zed_camera.setSVOPosition(0);
+
+            } else {
+                break;
+            }
         }
         else {
             std::cerr << "Grab ZED : " << returned_state << std::endl;
@@ -292,10 +320,6 @@ auto main(int argc, char const *argv[]) -> int {
      } 
 
 
-  // Create a orbslam3 system object
-
-//   orbslam3::System orbslam3_system(vocabulary_filepath, settings_filepath,
-                                //    orbslam3::System::IMU_STEREO, use_viewer);
 
 
 
