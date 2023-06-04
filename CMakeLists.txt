@@ -28,15 +28,6 @@ find_package (ZED 3 REQUIRED)
 find_package (CUDA ${ZED_CUDA_VERSION} EXACT REQUIRED)
 find_package (OpenCV REQUIRED)
 
-# option (FORCE_COLORED_OUTPUT "Always produce ANSI-colored output (GNU/Clang only)." TRUE)
-
-# if (${FORCE_COLORED_OUTPUT})
-# if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-# add_compile_options (-fdiagnostics-color=always)
-# elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-# add_compile_options (-fcolor-diagnostics)
-# endif ()
-# endif ()
 target_sources (orbslam3-stereolabs-svo
     PRIVATE
         src/main.cpp
@@ -53,16 +44,16 @@ target_link_libraries (orbslam3-stereolabs-svo
 target_include_directories (orbslam3-stereolabs-svo
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/src
         ${ZED_INCLUDE_DIRS}
         ${CUDA_INCLUDE_DIRS}
         ${OpenCV_INCLUDE_DIRS}
 )
 
-message (STATUS "CMAKE_CXX_COMPILER_ID: ${CMAKE_CXX_COMPILER_ID}")
-
 target_compile_options (orbslam3-stereolabs-svo PRIVATE
     -Wall
     -Wextra
+    -Wno-deprecated-copy
 
     # if the compiler is clang
     $<$<STREQUAL:${CMAKE_CXX_COMPILER_ID},Clang>:-fcolor-diagnostics>
